@@ -2,7 +2,7 @@ import pygame
 import sys
 import csv
 
-def setup_window(width, height, fullscreen=False):
+def setup_window(width, height, fullscreen=True):
     flags = pygame.FULLSCREEN if fullscreen else 0
     return pygame.display.set_mode((width, height), flags)
 
@@ -11,22 +11,29 @@ def render_text(text_str, font, width, height):
     text_rect = text.get_rect(center=(width // 2, height // 2))
     return text, text_rect
 
-def animate_text(text, text_rect, screen, speed, dt):
+def animate_text(text, text_rect, screen, speed, clock, start_wait):
     x_position = screen.get_width()
     running = True
-    fullscreen = False
 
     while running:
+        dt = clock.tick(60) / 1000.0  # Delta Time in Sekunden
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    fullscreen = not fullscreen
-                    screen = setup_window(screen.get_width(), screen.get_height(), fullscreen)
+                if event.key == pygame.K_n:
+                    running = False
+                elif event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    sys.exit()
 
-        # Führe die Animation durch
+        screen.fill((0, 0, 0))
+
+        if pygame.time.get_ticks() < start_wait:
+            pygame.display.update()
+            continue
+
         x_position -= speed * dt
         rounded_x_position = round(x_position)
         screen.blit(text, (rounded_x_position, text_rect.y))
@@ -46,40 +53,28 @@ def read_text_from_csv(file_path, delimiter=';'):
     return texts
 
 def main():
-    fps = 120
+    fps = 60
     width, height = 1280, 720
-    speed = 17  # Geschwindigkeit in Pixel pro Sekunde
-    font_size = 80
+    speed = 250  # Geschwindigkeit in Pixel pro Sekunde
     csv_file_path = "text_data.csv"
-    start_wait = 3000  # Sec.
-    stop_wait = 2000   # Sec.
+    start_wait = 4000
+    font_size = 80
 
-    fullscreen = True
-    screen = setup_window(width, height, fullscreen)
-
-    texts = read_text_from_csv(csv_file_path)
-
+    screen = setup_window(width, height)
     clock = pygame.time.Clock()
-    dt = clock.tick(fps) / 1000.0  # Delta Time in Sekunden
+    clock.tick(fps)
+
+    texts = read_text_from_csv(csv_file_path, delimiter=';')
 
     pygame.init()
-
     font = pygame.font.Font(None, font_size)
 
-    # Schriftart-Caching
+    # Schriftart-Caching (außerhalb der Animationsschleife)
     cached_text = {text: render_text(text, font, width, height) for text in texts}
-
-    # Fülle den Bildschirm mit Schwarz
-    screen.fill((0, 0, 0))
-    pygame.time.wait(start_wait)
 
     for text_str in texts:
         text, text_rect = cached_text[text_str]
-        animate_text(text, text_rect, screen, speed, dt)
-
-    pygame.time.wait(stop_wait)
-    pygame.quit()
-    sys.exit()
+        animate_text(text, text_rect, screen, speed, clock, start_wait)
 
 if __name__ == "__main__":
     main()
