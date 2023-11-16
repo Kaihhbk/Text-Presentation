@@ -2,8 +2,8 @@ import pygame
 import sys
 import csv
 
-def setup_window(width, height, fullscreen=True):
-    flags = pygame.FULLSCREEN if fullscreen else 0
+def setup_window(width, height, fullscreen=False):
+    flags = pygame.FULLSCREEN if fullscreen else pygame.RESIZABLE
     return pygame.display.set_mode((width, height), flags)
 
 def render_text(text_str, font, width, height):
@@ -11,8 +11,8 @@ def render_text(text_str, font, width, height):
     text_rect = text.get_rect(center=(width // 2, height // 2))
     return text, text_rect
 
-def animate_text(text, text_rect, screen, speed, clock, start_wait):
-    x_position = screen.get_width()
+def animate_texts(texts, screen, speed, clock, start_wait, original_height, row_spacing):
+    x_positions = [screen.get_width()] * len(texts)
     running = True
 
     while running:
@@ -27,6 +27,9 @@ def animate_text(text, text_rect, screen, speed, clock, start_wait):
                 elif event.key == pygame.K_ESCAPE:
                     pygame.quit()
                     sys.exit()
+            elif event.type == pygame.VIDEORESIZE:
+                # Behandle das Event, wenn das Fenster skaliert wird
+                screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
 
         screen.fill((0, 0, 0))
 
@@ -34,13 +37,19 @@ def animate_text(text, text_rect, screen, speed, clock, start_wait):
             pygame.display.update()
             continue
 
-        x_position -= speed * dt
-        rounded_x_position = round(x_position)
-        screen.blit(text, (rounded_x_position, text_rect.y))
+        for i, text_data in enumerate(texts):
+            text, text_rect = text_data
+            x_positions[i] -= speed * dt
+            rounded_x_position = round(x_positions[i])
+
+            # Berechne die neue Y-Position, um den Text auf der Y-Achse zu zentrieren
+            text_rect.y = (i * (original_height + row_spacing)) + (screen.get_height() - len(texts) * (original_height + row_spacing)) // 2
+
+            screen.blit(text, (rounded_x_position, text_rect.y))
 
         pygame.display.update()
 
-        if x_position + text_rect.width <= 0:
+        if all(x_position + text_rect.width <= 0 for x_position, text_rect in zip(x_positions, [text_data[1] for text_data in texts])):
             running = False
 
 def read_text_from_csv(file_path, delimiter=';'):
@@ -59,8 +68,10 @@ def main():
     csv_file_path = "text_data.csv"
     start_wait = 4000
     font_size = 80
+    fullscreen = False
+    row_spacing = 40  # Abstand zwischen den Reihen, hier angepasst
 
-    screen = setup_window(width, height)
+    screen = setup_window(width, height, fullscreen)
     clock = pygame.time.Clock()
     clock.tick(fps)
 
@@ -70,11 +81,9 @@ def main():
     font = pygame.font.Font(None, font_size)
 
     # Schriftart-Caching (außerhalb der Animationsschleife)
-    cached_text = {text: render_text(text, font, width, height) for text in texts}
+    cached_texts = [(render_text(text, font, width, height)) for text in texts]
 
-    for text_str in texts:
-        text, text_rect = cached_text[text_str]
-        animate_text(text, text_rect, screen, speed, clock, start_wait)
+    animate_texts(cached_texts, screen, speed, clock, start_wait, cached_texts[0][1].height, row_spacing)
 
 if __name__ == "__main__":
     main()
