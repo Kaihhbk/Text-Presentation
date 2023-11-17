@@ -2,8 +2,8 @@ import pygame
 import sys
 import csv
 
-def setup_window(width, height, fullscreen=True):
-    flags = pygame.FULLSCREEN if fullscreen else 0
+def setup_window(width, height, fullscreen=False):
+    flags = pygame.FULLSCREEN if fullscreen else pygame.RESIZABLE
     return pygame.display.set_mode((width, height), flags)
 
 def render_text(text_str, font, width, height):
@@ -11,7 +11,7 @@ def render_text(text_str, font, width, height):
     text_rect = text.get_rect(center=(width // 2, height // 2))
     return text, text_rect
 
-def animate_text(text, text_rect, screen, speed, clock, start_wait):
+def animate_text(text, text_rect, screen, speed, clock, start_wait, original_height):
     x_position = screen.get_width()
     running = True
 
@@ -27,6 +27,10 @@ def animate_text(text, text_rect, screen, speed, clock, start_wait):
                 elif event.key == pygame.K_ESCAPE:
                     pygame.quit()
                     sys.exit()
+            elif event.type == pygame.VIDEORESIZE:
+                # Behandle das Event, wenn das Fenster skaliert wird
+                screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+                width, height = event.w, event.h
 
         screen.fill((0, 0, 0))
 
@@ -36,6 +40,10 @@ def animate_text(text, text_rect, screen, speed, clock, start_wait):
 
         x_position -= speed * dt
         rounded_x_position = round(x_position)
+
+        # Berechne die neue Y-Position, um den Text auf der Y-Achse zu zentrieren
+        text_rect.y = (screen.get_height() - original_height) // 2
+
         screen.blit(text, (rounded_x_position, text_rect.y))
 
         pygame.display.update()
@@ -59,8 +67,9 @@ def main():
     csv_file_path = "text_data.csv"
     start_wait = 4000
     font_size = 80
+    fullscreen = False
 
-    screen = setup_window(width, height)
+    screen = setup_window(width, height, fullscreen)
     clock = pygame.time.Clock()
     clock.tick(fps)
 
@@ -74,7 +83,7 @@ def main():
 
     for text_str in texts:
         text, text_rect = cached_text[text_str]
-        animate_text(text, text_rect, screen, speed, clock, start_wait)
+        animate_text(text, text_rect, screen, speed, clock, start_wait, text_rect.height)
 
 if __name__ == "__main__":
     main()
